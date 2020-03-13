@@ -1,0 +1,11 @@
+moveit_setup_assistant_config:
+  URDF:
+    package: vision_control
+    relative_path: urdf/panda_arm_suction_cam.urdf.xacro
+    xacro_args: ""
+  SRDF:
+    relative_path: config/panda.srdf
+  CONFIG:
+    author_name: eymar
+    author_email: eymar13@ru.is
+    generated_timestamp: 1584028568
