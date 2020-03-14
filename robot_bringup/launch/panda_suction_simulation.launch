@@ -1,0 +1,56 @@
+<?xml version="1.0" ?>
+<launch>
+<param name="robot_description" command="$(find xacro)/xacro --inorder '$(find vision_control)/urdf/panda_arm_suction_cam.urdf.xacro'" />
+
+    <!-- GAZEBO arguments -->
+    <arg name="paused" default="false"/>
+    <arg name="use_sim_time" default="true"/>
+    <arg name="gui" default="true"/>
+    <arg name="headless" default="false"/>
+    <arg name="debug" default="false"/>
+    <arg name="load_gripper" default="false"/>
+
+    <!--launch GAZEBO with own world configuration -->
+    <include file="$(find gazebo_ros)/launch/empty_world.launch">
+        <arg name="world_name" value="$(find vision_control)/panda_apriltag.world"/>
+        <arg name="debug" value="$(arg debug)"/>
+        <arg name="gui" value="$(arg gui)"/>
+        <arg name="paused" value="$(arg paused)"/>
+        <arg name="use_sim_time" value="$(arg use_sim_time)"/>
+        <arg name="headless" value="$(arg headless)"/>
+    </include>
+    <!--0.040 -0.0175 0.066 3.1415 -1.571 0<node pkg="tf" type="static_transform_publisher" name="kinect_pubs" args="0 0 0 -0.500 0.500 -0.500 0.500 kinect_link kinect_depth_frame 100" />-->
+    <node pkg="tf2_ros" type="static_transform_publisher" name="rs_broadcast"
+        args="0 0 0 -0.500 0.500 -0.500 0.500 picking_camera_link picking_camera_depth_frame" />
+
+    <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-param robot_description -urdf -model panda"/>
+
+    <!-- Load joint controller configurations from YAML file to parameter server -->
+    <rosparam file="$(find robot_bringup)/config/panda_control.yaml" command="load"/>
+
+
+    <!-- load the controllers -->
+    <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="joint_state_controller panda_arm_controller" />
+    <node if="$(arg load_gripper)" name="controller_spawner_hand" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="panda_hand_controller" />
+
+
+    <!-- convert joint states to TF transforms for rviz, etc -->
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" respawn="true" output="screen" />
+
+    <include file="$(find panda_suction_moveit_config)/launch/planning_context.launch">
+        <arg name="load_robot_description" value="true"/>
+        <!--<arg name="load_gripper" value="$(arg load_gripper)" />-->
+    </include>
+    <include file="$(find panda_suction_moveit_config)/launch/move_group.launch" >
+        <!--<arg name="load_gripper" value="$(arg load_gripper)" />-->
+    </include>
+    <group if="$(arg gui)">
+        <include file="$(find panda_suction_moveit_config)/launch/moveit_rviz.launch" />
+    </group>
+
+    <node name="joint_state_desired_publisher" pkg="topic_tools" type="relay" args="joint_states joint_states_desired" />
+
+    <!-- launch robot control node for moveit motion planning
+    <node pkg="panda_simulation" type="robot_control_node" name="robot_control_node" />-->
+
+</launch>
